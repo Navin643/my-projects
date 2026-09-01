@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>পিছনে ফিরে তাকাই</title>
+
+<!--
+  ============================================================
+  কিভাবে এই ফাইলটা ব্যবহার করবেন (সংক্ষেপে বাংলায়):
+
+  ১) এই ফাইলটাকে "index.html" নামে সেভ করুন।
+  ২) আপনার music.mp3 ফাইলটা ঠিক এই index.html এর পাশে (একই ফোল্ডারে) রাখুন।
+  ৩) index.html ডাবল ক্লিক করে ব্রাউজারে খুলে টেস্ট করুন।
+  ৪) GitHub Pages এ upload করলেই সবার সাথে শেয়ার করার লিংক পেয়ে যাবেন।
+
+  কোথায় কী বদলাবেন:
+  - টেক্সট বদলাতে চাইলে নিচে <script> এর ভেতরে "STORY TEXT" অংশে যান।
+  - সময় (কতক্ষণ কোন scene থাকবে) বদলাতে চাইলে "TIMINGS" অংশে যান।
+  - রঙ/ডিজাইন বদলাতে চাইলে <style> এর শুরুতে ":root" এ কালার ভ্যারিয়েবল আছে।
+
+  এই ভার্সনে যা নতুন:
+  - টেক্সট এখন word-by-word উঠে আসে (দ্রুত, স্টাইলিশ, blur-to-focus effect + glow)
+  - পুরো story আগের চেয়ে দ্রুত চলে
+  - Music tap-to-start এর সাথে সাথে ঠিক 0 সেকেন্ড থেকে শুরু হয়, শেষে আবার লুপ হয়ে বাজে
+  - শেষ দৃশ্য: ছেলেটা চাঁদের নিচে ছোট হতে হতে হারিয়ে যায়, শুধু তারা ও টেক্সট থেকে যায়
+  - প্রতিটা লাইনের সাথে ছেলেটার আলাদা body-language/animation মিলিয়ে দেওয়া হয়েছে:
+      scene1 (কথা বলবো?)      -> শান্ত idle ভঙ্গি, আস্তে শ্বাস নেওয়ার মতো নড়াচড়া
+      scene2 (ভুলতে চেয়েছিলাম) -> হাঁটা শুরু, দূরে চলে যাওয়ার ভঙ্গি
+      scene3 (কিন্তু আজও)      -> হাঁটায় একটা ছোট্ট hesitation/থমকে যাওয়া
+      scene4 (নাম কানে আসলেই)  -> থেমে যাওয়া, মাথা কাত করে শোনার ভঙ্গি + sound-ring animation
+      calling (এই/ওই)         -> group থেকে ডাক, boy শোনে
+      peak (পিছনে ফিরে তাকাই)  -> ঘুরে তাকানো (turn-around)
+      twist                    -> কাঁধ/মাথা সামান্য নুয়ে পড়া (নিরব হতাশা), তারপর আবার সোজা হয়ে হাঁটা
+      final                    -> চাঁদের নিচে ছোট হয়ে মিলিয়ে যাওয়া
+  ============================================================
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Noto+Serif+Bengali:wght@500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --sky-top:#080b16;
+    --sky-mid:#0e1730;
+    --sky-bottom:#1b2947;
+    --moon:#f3ecd6;
+    --moon-glow:rgba(243,236,214,0.35);
+    --ember:#e3b579;
+    --ember-soft:rgba(227,181,121,0.55);
+    --rose:#d99aa1;
+    --ink:#020308;
+    --silhouette:#0c1424;
+    --silhouette-rim:rgba(227,181,121,0.5);
+    --text-main:#f3efe4;
+    --text-soft:#c7cde0;
+    --ground-a:#0a0f1e;
+    --ground-b:#050810;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; width:100%; height:100%;
+    background:var(--ink);
+    overflow:hidden;
+    font-family:'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  #stage{
+    position:relative;
+    width:100vw; height:100vh; height:100dvh;
+    overflow:hidden;
+    background:var(--ink);
+    visibility:hidden;
+  }
+  #stage.active{ visibility:visible; }
+
+  .sky{
+    position:absolute; inset:0;
+    background:linear-gradient(to bottom, var(--sky-top) 0%, var(--sky-mid) 55%, var(--sky-bottom) 100%);
+    transform:scale(1.06);
+    transition:filter 2s ease, transform 6s ease-out, background 2s ease;
+  }
+  #stage.dim .sky{ filter:brightness(0.55) saturate(0.85); }
+  #stage.zoom .sky{ transform:scale(1.14); }
+  #stage.finale .sky{ filter:brightness(0.75) saturate(0.7); transform:scale(1.1); }
+
+  .moon{
+    position:absolute; top:9%; right:14%;
+    width:15vw; height:15vw; max-width:90px; max-height:90px; min-width:46px; min-height:46px;
+    border-radius:50%;
+    background:radial-gradient(circle at 35% 35%, #fff8e8, var(--moon) 55%, #cfc394 100%);
+    box-shadow:0 0 40px 14px var(--moon-glow), 0 0 90px 40px rgba(243,236,214,0.12);
+    opacity:0;
+    transition:opacity 3s ease, box-shadow 2.5s ease, transform 2.5s ease;
+  }
+  #stage.active .moon{ opacity:1; }
+  #stage.finale .moon{
+    box-shadow:0 0 70px 26px var(--moon-glow), 0 0 140px 60px rgba(243,236,214,0.2);
+    transform:scale(1.18);
+  }
+
+  #starsLayer, #particlesLayer{ position:absolute; inset:0; pointer-events:none; }
+
+  .star{
+    position:absolute; width:2px; height:2px; border-radius:50%;
+    background:#fdf7e6; opacity:0.15;
+    animation:twinkle 3.6s ease-in-out infinite;
+  }
+  .star.extra{ width:2.4px; height:2.4px; opacity:0; transition:opacity 2s ease; }
+  .star.extra.show{ opacity:0.9; }
+  @keyframes twinkle{
+    0%,100%{opacity:0.15;}
+    50%{opacity:0.85;}
+  }
+
+  .firefly{
+    position:absolute; width:5px; height:5px; border-radius:50%;
+    background:var(--ember);
+    box-shadow:0 0 8px 3px var(--ember-soft);
+    opacity:0;
+    animation:floatUp linear infinite;
+  }
+  @keyframes floatUp{
+    0%{ transform:translate(0,0); opacity:0; }
+    10%{ opacity:0.9; }
+    50%{ transform:translate(var(--dx,10px), -40vh); opacity:0.7; }
+    90%{ opacity:0.2; }
+    100%{ transform:translate(calc(var(--dx,10px) * 1.6), -80vh); opacity:0; }
+  }
+
+  .fog{
+    position:absolute; left:-10%; right:-10%; bottom:16%; height:22%;
+    background:linear-gradient(to top, rgba(180,190,220,0.10), rgba(180,190,220,0));
+    filter:blur(6px);
+    opacity:0.7;
+    transition:opacity 2.5s ease;
+  }
+  #stage.finale .fog{ opacity:0; }
+
+  .ground{
+    position:absolute; left:0; right:0; bottom:0; height:22%;
+    background:linear-gradient(to bottom, var(--ground-a), var(--ground-b));
+    border-top:1px solid rgba(227,181,121,0.06);
+    transition:opacity 2.5s ease;
+  }
+  #stage.finale .ground{ opacity:0; }
+  .ground::before{
+    content:"";
+    position:absolute; top:-1px; left:0; right:0; height:6px;
+    background:linear-gradient(to right, transparent, rgba(227,181,121,0.18), transparent);
+  }
+
+  /* ---------- CHARACTERS ---------- */
+  .character{
+    position:absolute; bottom:20%;
+    width:34px; height:78px;
+    transform:translateX(-50%);
+    transition:left 2.2s cubic-bezier(.4,.05,.25,1), opacity 1.2s ease, transform 1s ease;
+    opacity:0;
+  }
+  .character.visible{ opacity:1; }
+
+  .char-head{
+    position:absolute; top:0; left:50%; transform:translateX(-50%);
+    width:16px; height:16px; border-radius:50%;
+    background:var(--silhouette);
+    box-shadow:1px -1px 0 var(--silhouette-rim) inset;
+  }
+  .char-body{
+    position:absolute; top:14px; left:50%; transform:translateX(-50%);
+    width:20px; height:32px;
+    background:var(--silhouette);
+    border-radius:10px 10px 6px 6px;
+    box-shadow:2px 0 0 var(--silhouette-rim) inset;
+  }
+  .char-skirt{
+    position:absolute; top:34px; left:50%; transform:translateX(-50%);
+    width:0; height:0;
+    border-left:11px solid transparent;
+    border-right:11px solid transparent;
+    border-top:16px solid var(--silhouette);
+  }
+  .char-leg{
+    position:absolute; top:44px; left:50%;
+    width:6px; height:26px;
+    background:var(--silhouette);
+    border-radius:0 0 4px 4px;
+    transform-origin:top center;
+  }
+  .char-leg.left{ margin-left:-7px; }
+  .char-leg.right{ margin-left:1px; }
+
+  .character.walking .char-leg.left{ animation:legSwingL 0.8s ease-in-out infinite; }
+  .character.walking .char-leg.right{ animation:legSwingR 0.8s ease-in-out infinite; }
+  .character.walking .char-body{ animation:bodyBob 0.8s ease-in-out infinite; }
+  @keyframes legSwingL{ 0%,100%{transform:rotate(18deg);} 50%{transform:rotate(-18deg);} }
+  @keyframes legSwingR{ 0%,100%{transform:rotate(-18deg);} 50%{transform:rotate(18deg);} }
+  @keyframes bodyBob{ 0%,100%{transform:translate(-50%,0);} 50%{transform:translate(-50%,-2px);} }
+
+  .character.facing-left{ transform:translateX(-50%) scaleX(-1); }
+
+  .character.shrink{
+    transition:left 3s ease-in, transform 3s ease-in, opacity 2.6s ease-in 0.3s;
+    transform:translateX(-50%) scale(0.2);
+    opacity:0;
+  }
+
+  /* ---- per-line body language, matched to the text on screen ---- */
+  .character.idle .char-body{ animation:idleSway 2.2s ease-in-out infinite; }
+  @keyframes idleSway{
+    0%,100%{ transform:translate(-50%,0) rotate(0deg); }
+    50%{ transform:translate(-50%,-1.5px) rotate(1deg); }
+  }
+
+  .character.listen{ position:absolute; }
+  .character.listen .char-head{
+    animation:headTilt 1.1s ease-in-out infinite alternate;
+  }
+  @keyframes headTilt{
+    from{ transform:translateX(-50%) rotate(0deg); }
+    to{ transform:translateX(-50%) rotate(9deg); }
+  }
+  .character.listen::after{
+    content:"";
+    position:absolute; top:-2px; left:50%;
+    width:16px; height:16px;
+    border:1px solid var(--ember-soft);
+    border-radius:50%;
+    transform:translateX(-50%) scale(1);
+    animation:soundRing 1.3s ease-out infinite;
+    opacity:0;
+  }
+  @keyframes soundRing{
+    0%{ opacity:0.85; transform:translateX(-50%) scale(0.9); }
+    100%{ opacity:0; transform:translateX(-50%) scale(2.8); }
+  }
+
+  .character.deflate .char-body{
+    animation:none !important;
+    transform:translate(-50%,3px) rotate(4deg);
+    transition:transform 0.6s ease;
+  }
+  .character.deflate .char-head{
+    transform:translateX(-50%) rotate(4deg);
+    transition:transform 0.6s ease;
+  }
+
+  #boy{ z-index:5; }
+  #calledPerson{ z-index:4; }
+  .group-member{ position:relative; }
+
+  #group{
+    position:absolute; bottom:20%; right:8%;
+    width:120px; height:78px;
+    opacity:0;
+    transition:opacity 1.4s ease;
+  }
+  #group.visible{ opacity:1; }
+  #group .gm{ position:absolute; bottom:0; width:26px; height:66px; transform:scale(0.8); }
+  #group .gm1{ left:0; }
+  #group .gm2{ left:22px; transform:scale(0.72); }
+  #group .gm3{ left:44px; transform:scale(0.85); }
+  #group .gm4{ left:68px; transform:scale(0.7); }
+
+  .call-bubble{
+    position:absolute; bottom:34%; right:12%;
+    font-size:clamp(20px,6vw,30px);
+    font-weight:700;
+    color:var(--ember);
+    text-shadow:0 0 14px rgba(227,181,121,0.65), 0 0 2px #000;
+    opacity:0;
+    transform:translateY(6px) scale(0.9);
+    transition:opacity 0.4s ease, transform 0.4s ease;
+    pointer-events:none;
+    z-index:6;
+  }
+  .call-bubble.show{ opacity:1; transform:translateY(0) scale(1); }
+
+  /* ---------- STORY TEXT (word-by-word stylish reveal) ---------- */
+  .story-text{
+    position:absolute; left:50%; top:38%;
+    transform:translate(-50%,0);
+    width:88%; max-width:520px;
+    text-align:center;
+    color:var(--text-main);
+    font-size:clamp(20px,5.6vw,32px);
+    font-weight:600;
+    line-height:1.55;
+    z-index:7;
+  }
+  .story-text .text-line{ display:block; }
+  .story-text .word{
+    display:inline-block;
+    opacity:0;
+    transform:translateY(16px) scale(0.92);
+    filter:blur(6px);
+    text-shadow:0 2px 18px rgba(0,0,0,0.6);
+    animation:wordIn 0.5s cubic-bezier(.2,.8,.3,1) forwards;
+  }
+  @keyframes wordIn{
+    to{ opacity:1; transform:translateY(0) scale(1); filter:blur(0); }
+  }
+  .story-text.hide .word{
+    transition:opacity 0.4s ease, transform 0.4s ease, filter 0.4s ease;
+    animation:none !important;
+    opacity:0 !important;
+    transform:translateY(-8px) scale(0.96) !important;
+    filter:blur(4px) !important;
+  }
+  .story-text.peak{
+    font-size:clamp(24px,7.2vw,38px);
+    font-family:'Noto Serif Bengali', serif;
+    color:#fff7e8;
+  }
+  .story-text.peak .word{
+    text-shadow:0 0 18px rgba(227,181,121,0.35), 0 2px 16px rgba(0,0,0,0.7);
+    animation:wordIn 0.5s cubic-bezier(.2,.8,.3,1) forwards, glowPulse 2.2s ease-in-out 0.6s infinite;
+  }
+  .story-text.final{
+    top:42%;
+    font-family:'Noto Serif Bengali', serif;
+    color:var(--rose);
+  }
+  .story-text.final .word{
+    text-shadow:0 0 20px rgba(217,154,161,0.4), 0 2px 16px rgba(0,0,0,0.7);
+    animation:wordIn 0.55s cubic-bezier(.2,.8,.3,1) forwards, glowPulse2 2.6s ease-in-out 0.7s infinite;
+  }
+  @keyframes glowPulse{
+    0%,100%{ text-shadow:0 0 18px rgba(227,181,121,0.35), 0 2px 16px rgba(0,0,0,0.7);}
+    50%{ text-shadow:0 0 30px rgba(227,181,121,0.65), 0 2px 16px rgba(0,0,0,0.7);}
+  }
+  @keyframes glowPulse2{
+    0%,100%{ text-shadow:0 0 18px rgba(217,154,161,0.35), 0 2px 16px rgba(0,0,0,0.7);}
+    50%{ text-shadow:0 0 30px rgba(217,154,161,0.6), 0 2px 16px rgba(0,0,0,0.7);}
+  }
+
+  /* ---------- START SCREEN ---------- */
+  #startScreen{
+    position:fixed; inset:0; z-index:50;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:18px;
+    padding:8vh 8vw;
+    text-align:center;
+    background:radial-gradient(ellipse at 50% 30%, #10182e 0%, #060912 70%);
+    color:var(--text-main);
+  }
+  #startScreen .ss-stars{ position:absolute; inset:0; pointer-events:none; }
+  #startScreen h1{
+    position:relative;
+    font-size:clamp(22px,6.4vw,34px);
+    font-weight:700;
+    margin:0;
+    line-height:1.5;
+    text-shadow:0 2px 20px rgba(0,0,0,0.6);
+  }
+  #startScreen p{
+    position:relative;
+    margin:0;
+    color:var(--text-soft);
+    font-size:clamp(14px,4vw,18px);
+    font-weight:500;
+  }
+  #startBtn{
+    position:relative;
+    margin-top:10px;
+    padding:16px 34px;
+    font-size:clamp(16px,4.6vw,20px);
+    font-weight:700;
+    font-family:inherit;
+    color:#1a1206;
+    background:linear-gradient(135deg, #f6dfae, var(--ember));
+    border:none;
+    border-radius:999px;
+    box-shadow:0 8px 30px rgba(227,181,121,0.35);
+    cursor:pointer;
+    letter-spacing:0.3px;
+    transition:transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  #startBtn:active{ transform:scale(0.96); box-shadow:0 4px 16px rgba(227,181,121,0.3); }
+  #startScreen.fading{ opacity:0; pointer-events:none; transition:opacity 1s ease; }
+
+  /* ---------- REPLAY / MUSIC TOGGLE ---------- */
+  .replay-btn{
+    position:absolute; left:50%; bottom:9%;
+    transform:translateX(-50%);
+    padding:10px 20px;
+    font-size:14px;
+    font-family:inherit;
+    font-weight:600;
+    color:var(--text-soft);
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.16);
+    border-radius:999px;
+    backdrop-filter:blur(4px);
+    cursor:pointer;
+    opacity:0;
+    transition:opacity 1.2s ease;
+    z-index:8;
+  }
+  .replay-btn.visible{ opacity:1; }
+
+  .music-toggle{
+    position:absolute; top:max(16px, env(safe-area-inset-top)); right:16px;
+    width:38px; height:38px;
+    border-radius:50%;
+    border:1px solid rgba(255,255,255,0.16);
+    background:rgba(255,255,255,0.06);
+    color:var(--text-soft);
+    font-size:16px;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    opacity:0;
+    transition:opacity 1.2s ease;
+    z-index:9;
+  }
+  .music-toggle.visible{ opacity:0.85; }
+
+  .missing-music-note{
+    position:absolute; left:50%; bottom:6%;
+    transform:translateX(-50%);
+    width:82%; max-width:380px;
+    text-align:center;
+    font-size:13px;
+    color:var(--text-soft);
+    background:rgba(0,0,0,0.35);
+    border:1px solid rgba(255,255,255,0.1);
+    border-radius:10px;
+    padding:10px 14px;
+    opacity:0;
+    transition:opacity 1s ease;
+    z-index:9;
+  }
+  .missing-music-note.show{ opacity:1; }
+
+  .hidden{ display:none !important; }
+
+  @media (prefers-reduced-motion: reduce){
+    .character.walking .char-leg,
+    .character.walking .char-body,
+    .firefly, .star{ animation:none !important; }
+    .story-text .word{ animation-duration:0.01s !important; }
+  }
+</style>
+</head>
+<body>
+
+<audio id="bgMusic" src="music.mp3" preload="auto" loop playsinline></audio>
+
+<div id="startScreen">
+  <div class="ss-stars" id="ssStars"></div>
+  <h1>তোমার জন্য একটা ছোট্ট গল্প... ❤️</h1>
+  <p>হেডফোন থাকলে আরও ভালো লাগবে 🎧</p>
+  <button id="startBtn">🎵 Tap to Start</button>
+</div>
+
+<div id="stage">
+  <div class="sky"></div>
+  <div class="moon"></div>
+  <div id="starsLayer"></div>
+  <div id="particlesLayer"></div>
+  <div class="fog"></div>
+  <div class="ground"></div>
+
+  <div id="boy" class="character">
+    <div class="char-head"></div>
+    <div class="char-body"></div>
+    <div class="char-leg left"></div>
+    <div class="char-leg right"></div>
+  </div>
+
+  <div id="calledPerson" class="character">
+    <div class="char-head"></div>
+    <div class="char-body"></div>
+    <div class="char-skirt"></div>
+  </div>
+
+  <div id="group">
+    <div class="gm gm1 group-member"><div class="char-head"></div><div class="char-body"></div><div class="char-leg left"></div><div class="char-leg right"></div></div>
+    <div class="gm gm2 group-member"><div class="char-head"></div><div class="char-body"></div><div class="char-skirt"></div></div>
+    <div class="gm gm3 group-member"><div class="char-head"></div><div class="char-body"></div><div class="char-leg left"></div><div class="char-leg right"></div></div>
+    <div class="gm gm4 group-member"><div class="char-head"></div><div class="char-body"></div><div class="char-skirt"></div></div>
+  </div>
+
+  <div id="callBubble" class="call-bubble"></div>
+  <div id="storyText" class="story-text"></div>
+
+  <button id="musicToggle" class="music-toggle">🔊</button>
+  <button id="replayBtn" class="replay-btn">↻ আবার দেখুন</button>
+  <div id="missingNote" class="missing-music-note">Music file পাওয়া যায়নি। index.html এর পাশে music.mp3 রাখুন।</div>
+</div>
+
+<script>
+/* ============================================================
+   STORY TEXT — এখানে যেকোনো লাইন বদলাতে পারেন
+   ============================================================ */
+const TEXT = {
+  scene1: "একটা কথা বলবো...? ❤️",
+  scene2: "ভুলতে চেয়েছিলাম তোমাকে...",
+  scene3: "কিন্তু আজও...",
+  scene4: "তোমার নামটা কানে আসলেই...",
+  ei: "এই...!",
+  oi: "ওই...!",
+  peak: "পিছনে ফিরে তাকাই..! ❤️",
+  final: "কিছু মানুষ হারিয়ে যায়,\nকিন্তু তাদের মায়াটা থেকে যায়...! 🥀"
+};
+
+/* ============================================================
+   TIMINGS (মিলিসেকেন্ডে) — আগের চেয়ে দ্রুত করা হয়েছে
+   ============================================================ */
+const T = {
+  scene1: 1600,
+  scene2: 1600,
+  scene3: 1200,
+  scene4: 1400,
+  preCallPause: 500,
+  eiHold: 900,
+  gapBetweenCalls: 250,
+  oiHold: 900,
+  postCallPause: 250,
+  turnAround: 900,
+  peakHold: 2000,
+  twistReveal: 1400,
+  shrinkAway: 3000,
+  finalFadeWait: 500,
+  finalHold: 6500,
+  wordGap: 100,     // দুটো শব্দের মধ্যে দূরত্ব (ms)
+  textGap: 350       // এক লাইন হাইড হওয়ার পর পরের লাইন আসার আগে গ্যাপ
+};
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+const stage = document.getElementById('stage');
+const boy = document.getElementById('boy');
+const calledPerson = document.getElementById('calledPerson');
+const group = document.getElementById('group');
+const storyText = document.getElementById('storyText');
+const callBubble = document.getElementById('callBubble');
+const replayBtn = document.getElementById('replayBtn');
+const musicToggle = document.getElementById('musicToggle');
+const missingNote = document.getElementById('missingNote');
+const bgMusic = document.getElementById('bgMusic');
+const startScreen = document.getElementById('startScreen');
+const startBtn = document.getElementById('startBtn');
+const starsLayer = document.getElementById('starsLayer');
+
+/* ---------- decorative stars / fireflies ---------- */
+function scatterStars(container, count){
+  container.innerHTML = "";
+  for(let i=0;i<count;i++){
+    const s = document.createElement('div');
+    s.className = 'star';
+    s.style.left = Math.random()*100 + '%';
+    s.style.top = Math.random()*70 + '%';
+    s.style.animationDelay = (Math.random()*3.6).toFixed(2) + 's';
+    container.appendChild(s);
+  }
+}
+function addExtraStars(container, count){
+  for(let i=0;i<count;i++){
+    const s = document.createElement('div');
+    s.className = 'star extra';
+    s.style.left = Math.random()*100 + '%';
+    s.style.top = Math.random()*85 + '%';
+    s.style.animationDelay = (Math.random()*3.6).toFixed(2) + 's';
+    container.appendChild(s);
+    requestAnimationFrame(() => s.classList.add('show'));
+  }
+}
+function scatterFireflies(container, count){
+  for(let i=0;i<count;i++){
+    const f = document.createElement('div');
+    f.className = 'firefly';
+    f.style.left = (10 + Math.random()*80) + '%';
+    f.style.bottom = (10 + Math.random()*20) + '%';
+    f.style.setProperty('--dx', (Math.random()*40 - 20) + 'px');
+    f.style.animationDuration = (7 + Math.random()*6).toFixed(1) + 's';
+    f.style.animationDelay = (Math.random()*6).toFixed(1) + 's';
+    container.appendChild(f);
+  }
+}
+scatterStars(document.getElementById('ssStars'), 40);
+scatterStars(starsLayer, 55);
+scatterFireflies(document.getElementById('particlesLayer'), 16);
+
+/* ---------- helpers ---------- */
+function setBoyX(vw){ boy.style.left = vw + 'vw'; }
+function setCalledX(vw){ calledPerson.style.left = vw + 'vw'; }
+
+/* word-by-word stylish text reveal */
+async function showText(msg, extraClass){
+  storyText.className = 'story-text' + (extraClass ? (' ' + extraClass) : '');
+  storyText.innerHTML = '';
+  let wordIndex = 0;
+  const lines = msg.split('\n');
+  lines.forEach((line) => {
+    const lineDiv = document.createElement('div');
+    lineDiv.className = 'text-line';
+    const words = line.trim().split(/\s+/).filter(Boolean);
+    words.forEach((w) => {
+      const span = document.createElement('span');
+      span.className = 'word';
+      span.textContent = w + '\u00A0';
+      span.style.animationDelay = (wordIndex * T.wordGap) + 'ms';
+      lineDiv.appendChild(span);
+      wordIndex++;
+    });
+    storyText.appendChild(lineDiv);
+  });
+  await sleep(wordIndex * T.wordGap + 450);
+}
+async function hideText(){
+  storyText.classList.add('hide');
+  await sleep(420);
+  storyText.classList.remove('hide');
+  storyText.innerHTML = '';
+  await sleep(T.textGap);
+}
+async function showBubble(msg){
+  callBubble.textContent = msg;
+  callBubble.classList.add('show');
+}
+function hideBubble(){
+  callBubble.classList.remove('show');
+}
+
+/* ============================================================
+   MAIN STORY SEQUENCE
+   ============================================================ */
+async function playStory(){
+  stage.classList.remove('dim','zoom','finale');
+  storyText.className = 'story-text';
+  storyText.innerHTML = '';
+  hideBubble();
+  replayBtn.classList.remove('visible');
+  group.classList.remove('visible');
+  calledPerson.classList.remove('visible','walking');
+  boy.classList.remove('facing-left','shrink','walking','listen','deflate');
+  setBoyX(-8);
+  setCalledX(102);
+  boy.classList.add('visible','idle');
+
+  stage.classList.add('active');
+  await sleep(300);
+
+  // Scene 1 — শান্ত idle ভঙ্গি, এখনও হাঁটা শুরু হয়নি
+  await showText(TEXT.scene1);
+  await sleep(T.scene1);
+  await hideText();
+
+  // Scene 2 — "ভুলতে চেয়েছিলাম" — হাঁটা শুরু, দূরে চলে যাওয়ার ভঙ্গি
+  boy.classList.remove('idle');
+  boy.classList.add('walking');
+  setBoyX(18);
+  await showText(TEXT.scene2);
+  await sleep(T.scene2);
+  await hideText();
+
+  // Scene 3 — "কিন্তু আজও" — হাঁটায় ছোট্ট একটা hesitation/থমকে যাওয়া
+  boy.classList.remove('walking');
+  await sleep(280);
+  boy.classList.add('walking');
+  setBoyX(36);
+  await showText(TEXT.scene3);
+  await sleep(T.scene3);
+  await hideText();
+
+  // Scene 4 — "নাম কানে আসলেই" — থেমে গিয়ে মাথা কাত করে শোনার ভঙ্গি
+  stage.classList.add('dim');
+  setBoyX(52);
+  await sleep(400);
+  boy.classList.remove('walking');
+  boy.classList.add('listen');
+  await showText(TEXT.scene4);
+  await sleep(T.scene4);
+  await hideText();
+  boy.classList.remove('listen');
+
+  // Scene 5 — calling — boy আবার হাঁটতে শুরু করে group এর পাশ দিয়ে
+  group.classList.add('visible');
+  setCalledX(84);
+  calledPerson.classList.add('visible');
+  boy.classList.add('walking');
+  setBoyX(66);
+  await sleep(T.preCallPause);
+
+  await showBubble(TEXT.ei);
+  await sleep(T.eiHold);
+  hideBubble();
+  await sleep(T.gapBetweenCalls);
+
+  await showBubble(TEXT.oi);
+  await sleep(T.oiHold);
+  hideBubble();
+  await sleep(T.postCallPause);
+
+  boy.classList.remove('walking');
+  await sleep(250);
+  boy.classList.add('facing-left');
+  stage.classList.add('zoom');
+  await sleep(T.turnAround);
+
+  // Scene 6 — peak
+  await showText(TEXT.peak, 'peak');
+  await sleep(T.peakHold);
+  await hideText();
+
+  // Scene 7 — twist — অন্য একজনের কাছে চলে যাওয়া, boy-র নিরব হতাশা (deflate pose)
+  calledPerson.classList.add('walking');
+  setCalledX(80);
+  await sleep(T.twistReveal);
+  calledPerson.classList.remove('walking');
+
+  boy.classList.add('deflate');
+  await sleep(700);
+  boy.classList.remove('deflate','facing-left');
+  stage.classList.remove('zoom');
+  await sleep(500);
+
+  // Scene 8 — NEW FINAL SCENE
+  // ছেলেটা চাঁদের নিচে ছোট হতে হতে হারিয়ে যাচ্ছে —
+  // group/fog/ground fade করে শুধু আকাশ, চাঁদ ও তারা থেকে যায়
+  boy.classList.add('walking');
+  group.classList.remove('visible');
+  calledPerson.classList.remove('visible');
+  setBoyX(78);
+  await sleep(500);
+
+  stage.classList.add('finale');
+  addExtraStars(starsLayer, 30);
+  setBoyX(72);
+  boy.classList.add('shrink');
+  await sleep(T.shrinkAway);
+  boy.classList.remove('visible','walking');
+
+  await sleep(T.finalFadeWait);
+  await showText(TEXT.final, 'final');
+  await sleep(T.finalHold);
+
+  replayBtn.classList.add('visible');
+}
+
+/* ---------- music (loops continuously via <audio loop>) ---------- */
+function tryPlayMusic(){
+  const p = bgMusic.play();
+  if(p !== undefined){
+    p.catch(() => { /* autoplay blocked — user can tap the music toggle */ });
+  }
+}
+bgMusic.addEventListener('error', () => { missingNote.classList.add('show'); });
+
+musicToggle.classList.remove('hidden');
+replayBtn.classList.remove('hidden');
+musicToggle.addEventListener('click', () => {
+  if(bgMusic.paused){ tryPlayMusic(); musicToggle.textContent = '🔊'; }
+  else { bgMusic.pause(); musicToggle.textContent = '🔇'; }
+});
+musicToggle.classList.add('visible');
+
+startBtn.addEventListener('click', () => {
+  bgMusic.currentTime = 0;
+  tryPlayMusic();
+  startScreen.classList.add('fading');
+  setTimeout(() => startScreen.classList.add('hidden'), 1100);
+  playStory();
+});
+
+replayBtn.addEventListener('click', () => {
+  bgMusic.currentTime = 0;
+  tryPlayMusic();
+  playStory();
+});
+</script>
+</body>
+</html>
